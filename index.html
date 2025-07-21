@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>BDO Monster‑Zone Patch‑Impact Calculator</title>
+<style>
+  body{font-family:Arial,Helvetica,sans-serif;margin:2rem;max-width:1400px}
+  h1{font-size:1.4rem;margin-bottom:1rem}
+  label{margin-right:0.6rem}
+  input{width:6rem;padding:0.2rem}
+  button{padding:0.4rem 0.9rem;margin-left:0.6rem}
+  table{width:100%;border-collapse:collapse;margin-top:1.3rem;font-size:0.83rem}
+  th,td{border:1px solid #ccc;padding:4px;text-align:right}
+  th:first-child,td:first-child{text-align:left}
+  thead tr{background:#eee}
+  .easier{background:#e8f8e8}
+  .harder{background:#faeaea}
+  .guessed{color:#b00;font-style:italic}
+  tfoot{font-size:0.74rem}
+</style>
+</head>
+<body>
+<h1>BDO Monster‑Zone Patch‑Impact Calculator</h1>
+<p>Enter your hidden‑AP values <em>before</em> and <em>after</em> the patch. This tool returns:</p>
+<ul>
+<li>Old/New <strong>effective‑AP</strong> (zone‑cap model)</li>
+<li><strong>Δ HP</strong> &amp; <strong>Δ DR</strong> from the July 2025 patch</li>
+<li>Approximate <strong>TTK ratio</strong> — &lt;1 easier, &gt;1 harder</li>
+</ul>
+<p class="guessed">Rows/values with * are best‑guess placeholders pending official confirmation.</p>
+<form id="apForm" onsubmit="event.preventDefault();calc();">
+  <label>Before&nbsp;AP<input type="number" id="apBefore" value="1300"></label>
+  <label>After&nbsp;AP<input type="number" id="apAfter" value="1800"></label>
+  <button type="submit">Recalculate</button>
+</form>
+<table id="resultTbl">
+  <thead>
+    <tr>
+      <th>Zone</th>
+      <th>Init&nbsp;5 %</th>
+      <th>Old&nbsp;cap</th>
+      <th>Old&nbsp;soft‑%</th>
+      <th>New&nbsp;cap</th>
+      <th>Eff&nbsp;AP (old)</th>
+      <th>Eff&nbsp;AP (new)</th>
+      <th>Δ Eff&nbsp;%</th>
+      <th>Δ HP</th>
+      <th>Δ DR</th>
+      <th>TTK&nbsp;ratio</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+<tfoot>
+  <tr><td colspan="11">Effective‑AP formula: <code>seg1 = min(AP,init)*.05; seg2 = max(0,min(AP,cap)-init)*1; seg3 = max(0,AP-cap)*soft%</code>. New epoch fixes <code>soft%</code> at 0.05. TTK ≈ <code>(1+ΔHP)*(1+ΔDR)*(oldEff/newEff)</code>.</td></tr>
+</tfoot>
+<script>
+const zones=[
+  {n:"Mirumok Ruins",init:350,oldCap:380,oldPct:.7,newCap:560, dHP:-0.50, dDR:0},
+  {n:"Thornwood Forest",init:384,oldCap:600,oldPct:.7,newCap:756, dHP:-0.33, dDR:0},
+  {n:"Hystria Ruins",init:384,oldCap:600,oldPct:.7,newCap:756, dHP:-0.33, dDR:0},
+  {n:"Kratuga Ancient Ruins",init:342,oldCap:600,oldPct:.7,newCap:756, dHP:0, dDR:0},
+  {n:"Sycria Underwater Ruins (Deep)",init:400,oldCap:650,oldPct:.7,newCap:800, dHP:0, dDR:0, guess:true},
+  {n:"Star’s End",init:392,oldCap:650,oldPct:.7,newCap:800, dHP:-0.33, dDR:0},
+  {n:"Tunkuta",init:400,oldCap:700,oldPct:.7,newCap:825, dHP:-0.23, dDR:0},
+  {n:"Gyfin Temple (Upper)",init:392,oldCap:700,oldPct:.7,newCap:825, dHP:-0.23, dDR:0},
+  {n:"Padix Island",init:400,oldCap:700,oldPct:.7,newCap:825, dHP:-0.23, dDR:0},
+  {n:"Abandoned Monastery",init:400,oldCap:750,oldPct:.7,newCap:856, dHP:-0.26, dDR:0},
+  {n:"Murrowak’s Labyrinth",init:452,oldCap:730,oldPct:.3,newCap:856, dHP:0, dDR:0},
+  {n:"Jade Starlight Forest",init:631,oldCap:734,oldPct:.3,newCap:950, dHP:0.50, dDR:0.15},
+  {n:"Honglim Base",init:744,oldCap:850,oldPct:.3,newCap:950, dHP:2.00, dDR:-0.01},
+  {n:"Giant Garrison [Elvia]",init:725,oldCap:856,oldPct:.05,newCap:1000, dHP:2.00, dDR:0.07},
+  {n:"Gyfin Temple (Underground)",init:578,oldCap:830,oldPct:.7,newCap:1030, dHP:0, dDR:0.40},
+  {n:"Valley of Olun",init:442,oldCap:830,oldPct:.7,newCap:1030, dHP:-0.27, dDR:0.83},
+  {n:"Ash Forest",init:442,oldCap:830,oldPct:.7,newCap:1130, dHP:0, dDR:1.07},
+  {n:"Crypt of Resting Thoughts",init:422,oldCap:830,oldPct:.7,newCap:1130, dHP:0.41, dDR:1.07},
+  {n:"Hexe Sanctuary [Elvia]",init:792,oldCap:898,oldPct:.05,newCap:1130, dHP:0, dDR:0.16},
+  {n:"Aakman Temple [Dehkia]",init:884,oldCap:1000,oldPct:.7,newCap:1130, dHP:0.50, dDR:0.04},
+  {n:"Hystria Ruins [Dehkia]",init:884,oldCap:1000,oldPct:.7,newCap:1130, dHP:1.00, dDR:0.04},
+  {n:"Pila Ku Jail [Dehkia]",init:864,oldCap:1000,oldPct:.7,newCap:1130, dHP:0.50, dDR:0.06},
+  {n:"Roud Sulfur Mine [Dehkia]",init:884,oldCap:1000,oldPct:.7,newCap:1130, dHP:1.00, dDR:0.04},
+  {n:"Cyclops Land [Dehkia]",init:910,oldCap:1000,oldPct:.7,newCap:1180, dHP:-0.06, dDR:0.06},
+  {n:"Thornwood Forest [Dehkia]",init:864,oldCap:1000,oldPct:.7,newCap:1180, dHP:0.29, dDR:0.12},
+  {n:"Yzrahid Highlands",init:926,oldCap:1100,oldPct:.7,newCap:1180, dHP:0, dDR:0.23},
+  {n:"Tunkuta [Dehkia]",init:915,oldCap:950,oldPct:.3,newCap:1180, dHP:0.45, dDR:0.06},
+  {n:"Quint Hill [Elvia]",init:814,oldCap:920,oldPct:.05,newCap:1295, dHP:1.70, dDR:0.30},
+  {n:"City of the Dead",init:889,oldCap:1100,oldPct:.7,newCap:1295, dHP:0, dDR:0.41},
+  {n:"Ash Forest [Dehkia]",init:866,oldCap:1000,oldPct:.7,newCap:1350, dHP:0.60, dDR:0.32},
+  {n:"Valley of Olun [Dehkia]",init:894,oldCap:1000,oldPct:.7,newCap:1350, dHP:-0.27, dDR:0.28},
+  {n:"Crescent Shrine [Dehkia]",init:864,oldCap:1000,oldPct:.7,newCap:1350, dHP:1.25, dDR:0.33},
+  {n:"Tungrad Ruins",init:957,oldCap:1100,oldPct:.7,newCap:1395, dHP:-0.30, dDR:0.42},
+  {n:"Cardy Ruins [Dehkia]",init:1000,oldCap:1100,oldPct:.7,newCap:1395, dHP:1.50, dDR:0.22},
+  {n:"Dokkebi Forest",init:1050,oldCap:1300,oldPct:.7,newCap:1445, dHP:0, dDR:0.32},
+  {n:"Dark Seeker’s Retreat",init:949,oldCap:1150,oldPct:.3,newCap:1490, dHP:-0.15, dDR:0.37},
+  {n:"Fortunate Golden Pig Cave",init:1100,oldCap:1350,oldPct:.7,newCap:1490, dHP:0.30, dDR:0.29},
+  {n:"Valley of Olun [Dehkia II] Normal mobs",init:1215,oldCap:1300,oldPct:.7,newCap:1490, dHP:11.50, dDR:0.07},
+  {n:"Valley of Olun [Dehkia II] Golem's Arm",init:1215,oldCap:1300,oldPct:.7,newCap:1490, dHP:1.08, dDR:3.46},
+  {n:"Valley of Olun [Dehkia II] Golem's Heart",init:1215,oldCap:1300,oldPct:.7,newCap:1490, dHP:4.0, dDR:0.0},
+  {n:"Ash Forest [Dehkia II]",init:1075,oldCap:1300,oldPct:.7,newCap:1540, dHP:0.30, dDR:0.32},
+  {n:"Golden Pig Cave",init:1090,oldCap:1350,oldPct:.7,newCap:1540, dHP:0.09, dDR:0.35},
+  {n:"Orzekia [Elvia]",init:1100,oldCap:1350,oldPct:.7,newCap:1595, dHP:0.20, dDR:0.38}
+];
+
+// Fill missing floors via 0.777 rule
+zones.forEach(z=>{
+  if(z.init==null){z.init=Math.round(z.oldCap*0.777);z.guess=true;}
+  if(z.dHP===undefined){z.dHP=0;z.guess=true;}
+  if(z.dDR===undefined){z.dDR=0;z.guess=true;}
+});
+
+function eff(ap,init,cap,soft){
+  const seg1=Math.min(ap,init)*0.05;
+  const seg2=Math.max(0,Math.min(ap,cap)-init); // 100 %
+  const seg3=Math.max(0,ap-cap)*soft;
+  return seg1+seg2+seg3;
+}
+
+function fmt(n){return Number.isFinite(n)?n.toFixed(2):"-";}
+function pct(n){return (n*100).toFixed(0)+'%';}
+
+function calc(){
+  const APb=parseFloat(document.getElementById('apBefore').value)||0;
+  const APa=parseFloat(document.getElementById('apAfter').value)||0;
+  const tbody=document.querySelector('#resultTbl tbody');
+  tbody.innerHTML='';
+  zones.forEach(z=>{
+    const oldEff=eff(APb,z.init,z.oldCap,z.oldPct);
+    const newEff=eff(APa,z.init,z.newCap,0.05);
+    const deltaEff=((newEff-oldEff)/oldEff)*100;
+    const ttk=(1+z.dHP)*(1+z.dDR)*(oldEff/newEff);
+
+    const tr=document.createElement('tr');
+    if(ttk<1) tr.classList.add('easier');
+    if(ttk>1) tr.classList.add('harder');
+
+    const name=document.createElement('td');
+    name.textContent=z.n+(z.guess?'*':'');
+    if(z.guess) name.className='guessed';
+    tr.appendChild(name);
+
+    [z.init,z.oldCap,pct(z.oldPct),z.newCap].forEach(v=>{
+      const td=document.createElement('td');td.textContent=v;tr.appendChild(td);
+    });
+
+    const tdOld=document.createElement('td');tdOld.textContent=fmt(oldEff);tr.appendChild(tdOld);
+    const tdNew=document.createElement('td');tdNew.textContent=fmt(newEff);tr.appendChild(tdNew);
+
+    const tdDE=document.createElement('td');tdDE.textContent=(deltaEff>0?'+':'')+fmt(deltaEff)+'%';tr.appendChild(tdDE);
+    const tdHP=document.createElement('td');tdHP.textContent=(z.dHP>0?'+':'')+pct(z.dHP);tr.appendChild(tdHP);
+    const tdDR=document.createElement('td');tdDR.textContent=(z.dDR>0?'+':'')+pct(z.dDR);tr.appendChild(tdDR);
+
+    const tdTTK=document.createElement('td');tdTTK.textContent=fmt(ttk);tr.appendChild(tdTTK);
+
+    tbody.appendChild(tr);
+  });
+}
+calc();
+</script>
+</body>
+</html>
