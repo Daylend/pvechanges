@@ -29,6 +29,7 @@
 </ul>
 <p class="guessed">Rows/values with * are best‑guess placeholders pending official confirmation.</p>
 <p class="guessed">BIG DISCLAIMER: I don't have access to DR/HP values of all mobs so calcs are best-effort and therefore may be wrong.</p>
+<p class="guessed">Edit: As expected, Glabs testing has revealed the TTK numbers are inaccurate. TLDR: early to mid game players will be able to grind harder spots, end game players will feel slightly weaker until edania as they are way over cap.</p>
 <form id="apForm" onsubmit="event.preventDefault();calc();">
   <label>Before&nbsp;AP<input type="number" id="apBefore" value="1300"></label>
   <label>After&nbsp;AP<input type="number" id="apAfter" value="1800"></label>
@@ -93,13 +94,13 @@ const zones=[
   {n:"Cardy Ruins [Dehkia]",init:1000,oldCap:1100,oldPct:.7,newCap:1395, dHP:1.50, dDR:0.22},
   {n:"Dokkebi Forest",init:1050,oldCap:1300,oldPct:.7,newCap:1445, dHP:0, dDR:0.32},
   {n:"Dark Seeker’s Retreat",init:949,oldCap:1150,oldPct:.3,newCap:1490, dHP:-0.15, dDR:0.37},
-  {n:"Fortunate Golden Pig Cave",init:1100,oldCap:1350,oldPct:.7,newCap:1490, dHP:0.30, dDR:0.29},
+  {n:"Fortunate Golden Pig Cave",init:1100,oldCap:1350,oldPct:.7,newCap:1490, dHP:0.30, dDR:0.29, guess: true},
   {n:"Valley of Olun [Dehkia II] Normal mobs",init:1215,oldCap:1300,oldPct:.7,newCap:1490, dHP:11.50, dDR:0.07},
   {n:"Valley of Olun [Dehkia II] Golem's Arm",init:1215,oldCap:1300,oldPct:.7,newCap:1490, dHP:1.08, dDR:3.46},
   {n:"Valley of Olun [Dehkia II] Golem's Heart",init:1215,oldCap:1300,oldPct:.7,newCap:1490, dHP:4.0, dDR:0.0},
   {n:"Ash Forest [Dehkia II]",init:1075,oldCap:1300,oldPct:.7,newCap:1540, dHP:0.30, dDR:0.32},
-  {n:"Golden Pig Cave",init:1090,oldCap:1350,oldPct:.7,newCap:1540, dHP:0.09, dDR:0.35},
-  {n:"Orzekia [Elvia]",init:1100,oldCap:1350,oldPct:.7,newCap:1595, dHP:0.20, dDR:0.38}
+  {n:"Golden Pig Cave",init:1090,oldCap:1350,oldPct:.7,newCap:1540, dHP:0.09, dDR:0.35, guess: true},
+  {n:"Orzekia [Elvia]",init:1100,oldCap:1350,oldPct:.7,newCap:1595, dHP:0.20, dDR:0.38, guess: true}
 ];
 
 // Fill missing floors via 0.777 rule
